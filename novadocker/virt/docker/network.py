@@ -58,6 +58,11 @@ def find_gateway(instance, network_info):
     raise exception.InstanceDeployFailure(_('Cannot find gateway'),
                                           instance_id=instance['uuid'])
 
+def find_metadata(instance, network_info):
+    for subnet in network_info['subnets']:
+        return subnet['gateway']['address']
+    raise exception.InstanceDeployFailure(_('Cannot find metadata'),
+                                          instance_id=instance['uuid'])
 
 # NOTE(arosen) - this method should be removed after it's moved into the
 # linux_net code in nova.
