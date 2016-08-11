@@ -66,6 +66,7 @@ def find_dhcp(instance, network_info):
 
 def find_mtu(instance, network_info):
     LOG.debug(_('Find mtu, dumping network_info: %s'), network_info)
+    return network_info['meta']['mtu']
     raise exception.InstanceDeployFailure(_('Cannot find mtu'),
                                           instance_id=instance['uuid'])
 

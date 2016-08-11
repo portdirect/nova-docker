@@ -440,7 +440,7 @@ class DockerGenericVIFDriver(object):
 
             # Setup MTU on if_remote_name is required if it is a non
             # default value
-            mtu = CONF.network_device_mtu
+            # mtu = CONF.network_device_mtu
             if vif.get('mtu') is not None:
                 mtu = vif.get('mtu')
             if mtu is not None:
