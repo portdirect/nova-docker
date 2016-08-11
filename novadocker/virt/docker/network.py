@@ -61,7 +61,7 @@ def find_gateway(instance, network_info):
 def find_dhcp(instance, network_info):
     for subnet in network_info['subnets']:
         LOG.debug(_('Find Dhcp, dumping subnet: %s'), subnet)
-        return subnet['dhcp_server']
+        return subnet['meta']['dhcp_server']
     raise exception.InstanceDeployFailure(_('Cannot find dhcp'),
                                           instance_id=instance['uuid'])
 
