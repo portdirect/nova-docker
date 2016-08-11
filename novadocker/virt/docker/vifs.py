@@ -419,6 +419,8 @@ class DockerGenericVIFDriver(object):
         gateway = network.find_gateway(instance, vif['network'])
         dhcp = network.find_dhcp(instance, vif['network'])
         ip = network.find_fixed_ip(instance, vif['network'])
+        mtu = network.find_mtu(instance, vif['network'])
+
 
         LOG.debug('attach vif_type=%(vif_type)s instance=%(instance)s '
                   'vif=%(vif)s',
