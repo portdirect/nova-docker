@@ -417,7 +417,7 @@ class DockerGenericVIFDriver(object):
         vif_type = vif['type']
         if_remote_name = 'ns%s' % vif['id'][:11]
         gateway = network.find_gateway(instance, vif['network'])
-        metadata = network.find_metadata(instance, vif['network'])
+        dhcp = network.find_dhcp(instance, vif['network'])
         ip = network.find_fixed_ip(instance, vif['network'])
 
         LOG.debug('attach vif_type=%(vif_type)s instance=%(instance)s '
@@ -451,10 +451,10 @@ class DockerGenericVIFDriver(object):
                               'ip', 'route', 'replace', 'default', 'via',
                               gateway, 'dev', if_remote_name, run_as_root=True)
 
-            if metadata is not None:
+            if dhcp is not None:
                 utils.execute('ip', 'netns', 'exec', container_id,
                               'ip', 'route', 'replace', '169.254.169.254/32', 'via',
-                              metadata, run_as_root=True)
+                              dhcp, run_as_root=True)
 
             # Disable TSO, for now no config option
             utils.execute('ip', 'netns', 'exec', container_id, 'ethtool',
