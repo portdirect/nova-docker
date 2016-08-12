@@ -445,7 +445,7 @@ class DockerDriver(driver.ComputeDriver):
         return dns if dns else None
 
     def _get_key_binds(self, container_id, instance):
-        binds = None
+        binds = {'/sys/fs/cgroup': {'bind': '/sys/fs/cgroup', 'ro': True}}
         # Handles the key injection.
         if CONF.docker.inject_key and instance.get('key_data'):
             key = str(instance['key_data'])
@@ -517,6 +517,7 @@ class DockerDriver(driver.ComputeDriver):
             'mem_limit': self._get_memory_limit_bytes(instance),
             'cpu_shares': self._get_cpu_shares(instance),
             'network_disabled': True,
+            'security_opt': 'seccomp=unconfined',
         }
 
         try:
