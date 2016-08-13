@@ -57,7 +57,7 @@ from novadocker.i18n import _, _LI, _LE, _LW
 from novadocker.virt.docker import client as docker_client
 from novadocker.virt.docker import hostinfo
 from novadocker.virt.docker import network
-from novadocker.virt.docker import utils as docker_utils
+from novadocker.virt.docker import utils as novadocker_utils
 from novadocker.virt import hostutils
 
 CONF = cfg.CONF
@@ -575,20 +575,20 @@ class DockerDriver(driver.ComputeDriver):
 
     def get_volume_connector(self, instance):
         if self._initiator is None:
-            self._initiator = docker_utils.get_iscsi_initiator()
+            self._initiator = novadocker_utils.get_iscsi_initiator()
             if not self._initiator:
                 LOG.debug('Could not determine iscsi initiator name',
                           instance=instance)
 
         if self._fc_wwnns is None:
-            self._fc_wwnns = docker_utils.get_fc_wwnns()
+            self._fc_wwnns = novadocker_utils.get_fc_wwnns()
             if not self._fc_wwnns or len(self._fc_wwnns) == 0:
                 LOG.debug('Could not determine fibre channel '
                           'world wide node names',
                           instance=instance)
 
         if self._fc_wwpns is None:
-            self._fc_wwpns = docker_utils.get_fc_wwpns()
+            self._fc_wwpns = novadocker_utils.get_fc_wwpns()
             if not self._fc_wwpns or len(self._fc_wwpns) == 0:
                 LOG.debug('Could not determine fibre channel '
                           'world wide port names',
