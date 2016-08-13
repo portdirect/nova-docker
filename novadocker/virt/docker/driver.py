@@ -517,6 +517,7 @@ class DockerDriver(driver.ComputeDriver):
         image_name = self._get_image_name(context, instance, image_meta)
         args = {
             'hostname': instance['hostname'],
+            'domainname': snapshot_directory = CONF.dhcp_domain,
             'mem_limit': self._get_memory_limit_bytes(instance),
             'cpu_shares': self._get_cpu_shares(instance),
             'network_disabled': True,
