@@ -801,6 +801,7 @@ class DockerDriver(driver.ComputeDriver):
                                             network_disabled=network_disabled,
                                             environment=environment,
                                             command=command,
+                                            tty=True,
                                             host_config=host_config)
 
     def get_host_uptime(self):
