@@ -96,6 +96,9 @@ docker_opts = [
     cfg.BoolOpt('privileged',
                 default=False,
                 help='Set true can own all root privileges in a container.'),
+    cfg.BoolOpt('ovn_metadata',
+                default=False,
+                help='Set up routes for the ovn metadata service'),
 ]
 
 CONF.register_opts(docker_opts, 'docker')
@@ -513,7 +516,7 @@ class DockerDriver(driver.ComputeDriver):
               flavor=None):
         image_name = self._get_image_name(context, instance, image_meta)
         args = {
-            'hostname': instance['name'],
+            'hostname': instance['hostname'],
             'mem_limit': self._get_memory_limit_bytes(instance),
             'cpu_shares': self._get_cpu_shares(instance),
             'network_disabled': True,
