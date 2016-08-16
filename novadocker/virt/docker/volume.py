@@ -228,6 +228,8 @@ class DockerISCSIVolumeDriver(DockerBaseVolumeDriver):
     def connect_volume(self, connection_info, disk_info):
         """Attach the volume to instance_name."""
         iscsi_properties = connection_info['data']
+        LOG.debug('Harbor Connecting to Volume %s',
+                  iscsi_properties
 
         # multipath installed, discovering other targets if available
         # multipath should be configured on the nova-compute node,
