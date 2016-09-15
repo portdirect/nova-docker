@@ -23,6 +23,9 @@ import shutil
 import socket
 import time
 import uuid
+import base64
+import tempfile
+
 
 from docker import errors
 from docker import utils as docker_utils
@@ -34,6 +37,7 @@ from oslo_utils import importutils
 from oslo_utils import units
 from oslo_utils import versionutils
 
+from nova.api.metadata import base as instance_metadata
 from nova import block_device
 from nova.compute import arch
 from nova.compute import flavors
@@ -47,6 +51,7 @@ from nova import objects
 from nova import utils
 from nova import utils as nova_utils
 from nova.virt import block_device as driver_block_device
+from nova.virt import configdrive
 from nova.virt import driver
 from nova.virt import firewall
 from nova.virt import hardware
@@ -98,6 +103,9 @@ docker_opts = [
                help='Shared directory where glance images located. If '
                     'specified, docker will try to load the image from '
                     'the shared directory by image ID.'),
+    cfg.StrOpt('metadata_directory',
+               default='/var/run/nova/metadata',
+               help='Base directory where metadata for instacnes witll be written'),
     cfg.BoolOpt('privileged',
                 default=False,
                 help='Set true can own all root privileges in a container.'),
@@ -464,12 +472,28 @@ class DockerDriver(driver.ComputeDriver):
                             dns.append(dns_entry['address'])
         return dns if dns else None
 
-    def _get_key_binds(self, container_id, instance):
+    def _get_key_binds(self, container_id, instance, network_info=None):
+
+
+
         binds = {'/sys/fs/cgroup': {'bind': '/sys/fs/cgroup', 'ro': True}}
+        # Handles user-data injection.
+        if 'user_data' in instance:
+            if instance['user_data'] is not None:
+                userdata = instance['user_data']
+                metadata = nova_utils.instance_meta(instance)
+                # Config drive
+                configdrive_value = None
+                extra_md = {}
+                i_meta = instance_metadata.InstanceMetadata(instance,
+                    content=None, extra_md=extra_md, network_info=network_info)
+                mount_origin = self._inject_userdata(container_id, userdata, metadata, i_meta)
+                binds = {"/sys/fs/cgroup": {"bind": "/sys/fs/cgroup","ro": "true"},mount_origin: {'bind': '/var/lib/cloud', 'ro': True}}
         # Handles the key injection.
         if CONF.docker.inject_key and instance.get('key_data'):
             key = str(instance['key_data'])
             mount_origin = self._inject_key(container_id, key)
+
             binds = {mount_origin: {'bind': '/root/.ssh', 'ro': True}}
         return binds
 
@@ -491,7 +515,7 @@ class DockerDriver(driver.ComputeDriver):
                 for vif in network_info if vif.get('active', True) is False]
 
     def _start_container(self, container_id, instance, network_info=None,devices=None):
-        binds = self._get_key_binds(container_id, instance)
+        binds = self._get_key_binds(container_id, instance, network_info)
         dns = self._extract_dns_entries(network_info)
         self.docker.start(container_id, binds=binds, dns=dns,devices=devices,
                           privileged=CONF.docker.privileged)
@@ -634,6 +658,10 @@ class DockerDriver(driver.ComputeDriver):
         if 'metadata' in instance:
             args['environment'] = nova_utils.instance_meta(instance)
 
+
+
+
+
         container_id = self._create_container(instance, image_name, args)
         if not container_id:
             raise exception.InstanceDeployFailure(
@@ -663,6 +691,35 @@ class DockerDriver(driver.ComputeDriver):
         return sshdir
 
     def _cleanup_key(self, instance, id):
+        if isinstance(id, dict):
+            id = id.get('id')
+        dir = os.path.join(CONF.instances_path, id)
+        if os.path.exists(dir):
+            LOG.info(_LI('Deleting instance files %s'), dir,
+                     instance=instance)
+            try:
+                shutil.rmtree(dir)
+            except OSError as e:
+                LOG.error(_LE('Failed to cleanup directory %(target)s: '
+                              '%(e)s'), {'target': dir, 'e': e},
+                          instance=instance)
+
+
+    def _inject_userdata(self, id, userdata, metadata, i_meta):
+        if isinstance(id, dict):
+            id = id.get('id')
+
+        metadata_directory = os.path.join(CONF.docker.metadata_directory, id, 'userdata')
+        user_data_file = os.path.join(metadata_directory, 'user_data')
+        fileutils.ensure_tree(metadata_directory)
+        with novadocker_utils.ConfigDriveBuilder(instance_md=i_meta) as cdb:
+                cdb.make_drive(user_data_file)
+        os.chmod(metadata_directory, 0o700)
+        os.chmod(user_data_file, 0o600)
+
+        return metadata_directory
+
+    def _cleanup_userdata(self, instance, id):
         if isinstance(id, dict):
             id = id.get('id')
         dir = os.path.join(CONF.instances_path, id)
