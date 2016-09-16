@@ -473,27 +473,17 @@ class DockerDriver(driver.ComputeDriver):
         return dns if dns else None
 
     def _get_key_binds(self, container_id, instance, network_info=None):
-
-
-
         binds = {'/sys/fs/cgroup': {'bind': '/sys/fs/cgroup', 'ro': True}}
         # Handles user-data injection.
-        if 'user_data' in instance:
-            if instance['user_data'] is not None:
-                userdata = instance['user_data']
-                metadata = nova_utils.instance_meta(instance)
-                # Config drive
-                configdrive_value = None
-                extra_md = {}
-                i_meta = instance_metadata.InstanceMetadata(instance,
-                    content=None, extra_md=extra_md, network_info=network_info)
-                mount_origin = self._inject_userdata(container_id, userdata, metadata, i_meta)
-                binds = {"/sys/fs/cgroup": {"bind": "/sys/fs/cgroup","ro": "true"},mount_origin: {'bind': '/var/lib/cloud', 'ro': True}}
+        extra_md = {}
+        i_meta = instance_metadata.InstanceMetadata(instance,
+            content=None, extra_md=extra_md, network_info=network_info)
+        mount_origin = self._inject_userdata(container_id, i_meta)
+        binds = {"/sys/fs/cgroup": {"bind": "/sys/fs/cgroup","ro": "true"},mount_origin: {'bind': '/var/lib/cloud/seed/config_drive', 'ro': True}}
         # Handles the key injection.
         if CONF.docker.inject_key and instance.get('key_data'):
             key = str(instance['key_data'])
             mount_origin = self._inject_key(container_id, key)
-
             binds = {mount_origin: {'bind': '/root/.ssh', 'ro': True}}
         return binds
 
@@ -658,10 +648,6 @@ class DockerDriver(driver.ComputeDriver):
         if 'metadata' in instance:
             args['environment'] = nova_utils.instance_meta(instance)
 
-
-
-
-
         container_id = self._create_container(instance, image_name, args)
         if not container_id:
             raise exception.InstanceDeployFailure(
@@ -705,24 +691,22 @@ class DockerDriver(driver.ComputeDriver):
                           instance=instance)
 
 
-    def _inject_userdata(self, id, userdata, metadata, i_meta):
+    def _inject_userdata(self, id, i_meta):
         if isinstance(id, dict):
             id = id.get('id')
 
         metadata_directory = os.path.join(CONF.docker.metadata_directory, id, 'userdata')
-        user_data_file = os.path.join(metadata_directory, 'user_data')
         fileutils.ensure_tree(metadata_directory)
         with novadocker_utils.ConfigDriveBuilder(instance_md=i_meta) as cdb:
-                cdb.make_drive(user_data_file)
+                cdb.make_drive(metadata_directory)
         os.chmod(metadata_directory, 0o700)
-        os.chmod(user_data_file, 0o600)
 
         return metadata_directory
 
     def _cleanup_userdata(self, instance, id):
         if isinstance(id, dict):
             id = id.get('id')
-        dir = os.path.join(CONF.instances_path, id)
+        dir = os.path.join(CONF.docker.metadata_directory, id)
         if os.path.exists(dir):
             LOG.info(_LI('Deleting instance files %s'), dir,
                      instance=instance)
